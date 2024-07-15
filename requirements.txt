@@ -204,7 +204,7 @@ lifelines==0.27.8
 lightgbm==2.3.1
 lightning-utilities==0.7.1
 lime==0.2.0.1
-llama-index==0.5.18
+llama-index>=3.7,<3.11
 llvmlite>=3.7,<3.11
 lxml==4.8.0
 lz4==4.3.2
