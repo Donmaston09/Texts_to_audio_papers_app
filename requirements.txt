@@ -1,9 +1,3 @@
-absl-py>=3.7,<3.11
-adjustText>=3.7,<3.11
-aiofiles>=3.7,<3.11
-aiohttp>=3.7,<3.11
-aiohttp-retry>=3.7,<3.11
-aiosignal>=3.7,<3.11
 altair>=3.7,<3.11
 analytics-python>=3.7,<3.11
 ansi2html>=3.7,<3.11
