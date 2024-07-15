@@ -1,4 +1,3 @@
-ABlooper>=3.7,<3.11
 absl-py>=3.7,<3.11
 adjustText>=3.7,<3.11
 aiofiles>=3.7,<3.11
