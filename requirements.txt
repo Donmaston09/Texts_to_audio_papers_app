@@ -7,7 +7,6 @@ aiohttp-retry>=3.7,<3.11
 aiosignal>=3.7,<3.11
 altair>=3.7,<3.11
 analytics-python>=3.7,<3.11
-git+https://github.com/oxpig/ANARCI.git
 ansi2html>=3.7,<3.11
 antiberty>=3.7,<3.11
 antlr4-python3-runtime>=3.7,<3.11
