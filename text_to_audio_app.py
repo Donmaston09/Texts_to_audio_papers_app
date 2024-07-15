@@ -6,36 +6,53 @@ import requests
 
 # Function to fetch papers from PubMed
 def fetch_papers(query, max_results=10):
-    url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
-    response = requests.get(url)
-    id_list = response.json()['esearchresult']['idlist']
+    try:
+        url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
+        response = requests.get(url)
+        response.raise_for_status()  # Check for HTTP request errors
 
-    papers = []
-    for pubmed_id in id_list:
-        fetch_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pubmed_id}&retmode=xml"
-        fetch_response = requests.get(fetch_url)
-        try:
-            soup = BeautifulSoup(fetch_response.content, 'lxml')  # Ensure lxml is used
-        except bs4.FeatureNotFound:
-            soup = BeautifulSoup(fetch_response.content, 'html.parser')  # Fallback to html.parser
+        st.write("Search API Response:")
+        st.json(response.json())  # Display the response for debugging
 
-        try:
-            title = soup.find('ArticleTitle').text
-            abstract = soup.find('AbstractText').text if soup.find('AbstractText') else 'No abstract available'
-            pubmed_central_id = soup.find('PubmedCentralId')
-            pmcid = pubmed_central_id.text if pubmed_central_id else None
+        id_list = response.json().get('esearchresult', {}).get('idlist', [])
+        if not id_list:
+            st.error("No papers found for the given query.")
+            return []
 
-            full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}" if pmcid else f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
+        papers = []
+        for pubmed_id in id_list:
+            fetch_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pubmed_id}&retmode=xml"
+            fetch_response = requests.get(fetch_url)
+            fetch_response.raise_for_status()  # Check for HTTP request errors
 
-            sections = {
-                'Title': title,
-                'Abstract': abstract,
-                'Full Text Link': full_text_link,
-            }
-            papers.append(sections)
-        except AttributeError:
-            continue
-    return papers
+            try:
+                soup = BeautifulSoup(fetch_response.content, 'lxml')  # Ensure lxml is used
+            except bs4.FeatureNotFound:
+                soup = BeautifulSoup(fetch_response.content, 'html.parser')  # Fallback to html.parser
+
+            st.write(f"Fetched Paper {pubmed_id}:")
+            st.write(fetch_response.content)  # Display the fetched content for debugging
+
+            try:
+                title = soup.find('ArticleTitle').text
+                abstract = soup.find('AbstractText').text if soup.find('AbstractText') else 'No abstract available'
+                pubmed_central_id = soup.find('PubmedCentralId')
+                pmcid = pubmed_central_id.text if pubmed_central_id else None
+
+                full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}" if pmcid else f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
+
+                sections = {
+                    'Title': title,
+                    'Abstract': abstract,
+                    'Full Text Link': full_text_link,
+                }
+                papers.append(sections)
+            except AttributeError:
+                continue
+        return papers
+    except requests.RequestException as e:
+        st.error(f"An error occurred while fetching papers: {e}")
+        return []
 
 # Streamlit app interface
 st.title("PaperVox - ")
