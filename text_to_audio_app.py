@@ -25,8 +25,8 @@ def fetch_papers(query, max_results=10):
             fetch_response = requests.get(fetch_url)
             fetch_response.raise_for_status()  # Check for HTTP request errors
 
-            st.write(f"Fetched Paper {pubmed_id}:")
-            st.write(fetch_response.content)  # Display the fetched content for debugging
+            st.write(f"Fetched Paper {pubmed_id} Content:")
+            st.code(fetch_response.content.decode('utf-8'))  # Display the fetched content for debugging
 
             try:
                 soup = BeautifulSoup(fetch_response.content, 'xml')
