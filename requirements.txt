@@ -167,7 +167,7 @@ ipykernel>=3.7,<3.11
 ipyspeck>=3.7,<3.11
 ipython>=3.7,<3.11
 ipython-genutils>=3.7,<3.11
-ipywidgets==7.6.3
+ipywidgets>=3.7,<3.11
 isal>=3.7,<3.11
 ismember>=3.7,<3.11
 isodate>=3.7,<3.11
