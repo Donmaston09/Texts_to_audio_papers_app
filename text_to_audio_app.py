@@ -6,96 +6,77 @@ import requests
 
 # Function to fetch papers from PubMed
 def fetch_papers(query, max_results=10):
+  url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
+  response = requests.get(url)
+  id_list = response.json()['esearchresult']['idlist']
+
+  papers = []
+  for pubmed_id in id_list:
+    fetch_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pubmed_id}&retmode=xml"
+    fetch_response = requests.get(fetch_url)
+    soup = BeautifulSoup(fetch_response.content, 'xml')
     try:
-        url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
-        response = requests.get(url)
-        response.raise_for_status()  # Check for HTTP request errors
+      title = soup.find('ArticleTitle').text
+      abstract = soup.find('AbstractText').text if soup.find('AbstractText') else 'No abstract available'
+      pubmed_central_id = soup.find('PubmedCentralId')  # Look for PubMed Central ID
+      pmcid = pubmed_central_id.text if pubmed_central_id else None  # Extract PMCID if available
 
-        st.write("Search API Response:")
-        st.json(response.json())  # Display the response for debugging
+      # Build link to full text (use PMCID if available, otherwise use PubMed link)
+      if pmcid:
+        full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}"
+      else:
+        full_text_link = f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
 
-        id_list = response.json().get('esearchresult', {}).get('idlist', [])
-        if not id_list:
-            st.error("No papers found for the given query.")
-            return []
-
-        papers = []
-        for pubmed_id in id_list:
-            fetch_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pubmed_id}&retmode=xml"
-            fetch_response = requests.get(fetch_url)
-            fetch_response.raise_for_status()  # Check for HTTP request errors
-
-            st.write(f"Fetched Paper {pubmed_id} Content:")
-            st.code(fetch_response.content.decode('utf-8'))  # Display the fetched content for debugging
-
-            try:
-                soup = BeautifulSoup(fetch_response.content, 'xml')
-
-                # Extracting relevant information
-                title_tag = soup.find('ArticleTitle')
-                abstract_tag = soup.find('AbstractText')
-                pubmed_central_id_tag = soup.find('PubmedCentralId')
-
-                title = title_tag.text if title_tag else 'No title available'
-                abstract = abstract_tag.text if abstract_tag else 'No abstract available'
-                pmcid = pubmed_central_id_tag.text if pubmed_central_id_tag else None
-
-                # Build link to full text (use PMCID if available, otherwise use PubMed link)
-                if pmcid:
-                    full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}"
-                else:
-                    full_text_link = f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
-
-                sections = {
-                    'Title': title,
-                    'Abstract': abstract,
-                    'Full Text Link': full_text_link,
-                }
-                papers.append(sections)
-            except Exception as e:
-                st.error(f"Error processing paper {pubmed_id}: {e}")
-                continue
-        return papers
-    except requests.RequestException as e:
-        st.error(f"An error occurred while fetching papers: {e}")
-        return []
+      sections = {
+          'Title': title,
+          'Abstract': abstract,
+          'Full Text Link': full_text_link,
+      }
+      papers.append(sections)
+    except AttributeError:
+      continue
+  return papers
 
 # Streamlit app interface
 st.title("PaperVox - ")
 st.subheader("An AI-Powered Research Paper Audio Summaries App")
 st.subheader("Onoja Anthony")
 
-st.write("About: Tired of reading research papers? This app helps you explore scientific literature through audio. Simply enter your search query, and PaperVox will find relevant papers from PubMed.")
-
+st.write("About: Tired of reading research papers? This app helps you explore scientific literature through audio. \n Simply enter your search query, and PaperVox will find relevant papers from PubMed. ")
 # Input for search query
 query = st.text_input("Enter your search query", "AI Machine Learning Biomedical Health Sciences")
 
-# Initialize session state to store papers
+# Session state to store papers
 if 'papers' not in st.session_state:
-    st.session_state.papers = []
-    st.session_state.search_done = False
+  st.session_state.papers = []
 
 # Button to search
 if st.button("Search"):
-    st.session_state.papers = fetch_papers(query)
-    st.session_state.search_done = True
+  # Fetch papers
+  st.session_state.papers = fetch_papers(query)
+  st.session_state.search_done = True
 
 # Display papers if search is done
-if st.session_state.search_done:
-    top_papers = st.session_state.papers[:5]
+if st.session_state.get('search_done', False):
+  # Filter papers
+  keywords = ["AI", "Machine Learning", "Biomedical", "Health Sciences"]
+  top_papers = st.session_state.papers[:5]
 
-    for i, paper in enumerate(top_papers):
-        st.write(f"**{i+1}. {paper['Title']}**")
-        st.write(f"*Abstract:* {paper['Abstract']}")
-        if st.button(f"Listen to Abstract {i+1}"):
-            text = paper['Abstract']
-            try:
-                tts = gTTS(text=text, lang='en')
-                audio_file = io.BytesIO()
-                tts.write_to_fp(audio_file)
-                audio_file.seek(0)
-                st.audio(audio_file, format='audio/mp3')
-            except Exception as e:
-                st.error(f"Error generating audio: {e}")
-        st.write(f"*Full Text:* [Link]({paper['Full Text Link']})")
-        st.write("")
+  # Display top 5 papers
+  for i, paper in enumerate(top_papers):
+    st.write(f"**{i+1}. {paper['Title']}**")
+    st.write(f"*Abstract:* {paper['Abstract']}")
+    # Button to generate audio for the abstract
+    if st.button(f"Listen to Abstract {i+1}"):
+      text = paper['Abstract']
+      try:
+        # Generate audio using gTTS
+        tts = gTTS(text=text, lang='en')
+        audio_file = io.BytesIO()
+        tts.write_to_fp(audio_file)
+        audio_file.seek(0)
+        st.audio(audio_file, format='audio/mp3')
+      except Exception as e:
+        st.error(f"Error generating audio: {e}")
+    st.write(f"*Full Text:* [Link]({paper['Full Text Link']})")
+    st.write("")
