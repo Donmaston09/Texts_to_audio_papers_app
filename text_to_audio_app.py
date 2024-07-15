@@ -25,21 +25,26 @@ def fetch_papers(query, max_results=10):
             fetch_response = requests.get(fetch_url)
             fetch_response.raise_for_status()  # Check for HTTP request errors
 
-            try:
-                soup = BeautifulSoup(fetch_response.content, 'lxml')  # Ensure lxml is used
-            except bs4.FeatureNotFound:
-                soup = BeautifulSoup(fetch_response.content, 'html.parser')  # Fallback to html.parser
-
             st.write(f"Fetched Paper {pubmed_id}:")
             st.write(fetch_response.content)  # Display the fetched content for debugging
 
             try:
-                title = soup.find('ArticleTitle').text
-                abstract = soup.find('AbstractText').text if soup.find('AbstractText') else 'No abstract available'
-                pubmed_central_id = soup.find('PubmedCentralId')
-                pmcid = pubmed_central_id.text if pubmed_central_id else None
+                soup = BeautifulSoup(fetch_response.content, 'xml')
 
-                full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}" if pmcid else f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
+                # Extracting relevant information
+                title_tag = soup.find('ArticleTitle')
+                abstract_tag = soup.find('AbstractText')
+                pubmed_central_id_tag = soup.find('PubmedCentralId')
+
+                title = title_tag.text if title_tag else 'No title available'
+                abstract = abstract_tag.text if abstract_tag else 'No abstract available'
+                pmcid = pubmed_central_id_tag.text if pubmed_central_id_tag else None
+
+                # Build link to full text (use PMCID if available, otherwise use PubMed link)
+                if pmcid:
+                    full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}"
+                else:
+                    full_text_link = f"https://pubmed.ncbi.nlm.nih.gov/{pubmed_id}/"
 
                 sections = {
                     'Title': title,
@@ -47,7 +52,8 @@ def fetch_papers(query, max_results=10):
                     'Full Text Link': full_text_link,
                 }
                 papers.append(sections)
-            except AttributeError:
+            except Exception as e:
+                st.error(f"Error processing paper {pubmed_id}: {e}")
                 continue
         return papers
     except requests.RequestException as e:
