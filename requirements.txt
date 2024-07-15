@@ -1,6 +1,6 @@
-streamlit==1.10.0
-gTTS==2.2.3
-beautifulsoup4==4.11.1
-requests==2.28.1
-interpolation>=2.2.0,<2.2.4
+streamlit
+gTTS
+beautifulsoup4
+requests
+interpolation
 lxml
